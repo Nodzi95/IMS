@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <list>
 #include "simlib.h"
+#include <cstdlib>
 #define POCET_POKLADEN 6
 using namespace std;
 
@@ -17,6 +18,7 @@ Histogram ote("Otevirani pokladen", 0, 1000, 1000);
 Histogram clos("Zavirani pokladen", 0, 1000, 1000);
 int aktualni_pocet = 0;
 int pokladny[5];
+int prichod = 27;
 
 class Zakaznik : public Process {
 	void Behavior(){
@@ -78,11 +80,11 @@ class Generator : public Event {
 	void Behavior(){
 		(new Zakaznik)->Activate();
 		//printf("pocet otevrenych: %d\n",otevrene.size());
-		Activate(Time+Exponential(27));
+		Activate(Time+Exponential(prichod));
 	}
 };
 
-int main(){
+int main(int argc, char *argv[]){
     otevrene.push_back(0);
     zavrene.push_back(1);
     zavrene.push_back(2);
@@ -96,6 +98,10 @@ int main(){
     Pokladna[4].SetName("Pokladna5");
     Pokladna[5].SetName("Pokladna6");
 
+
+    if(argc >= 2){
+        prichod = atol(argv[1]);
+    }
     SetOutput("out.txt");
 
 	Init(0,1000000);
@@ -111,4 +117,5 @@ int main(){
 	celk_cas.Output();
 	ote.Output();
 	clos.Output();
+	printf("Vysledky odpovidaji generovani zakazniku s exponencialnim rozlezeni: %d\n", prichod);
 }
