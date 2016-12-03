@@ -21,10 +21,12 @@ int pokladny[5];
 int prichod = 27;
 
 class Zakaznik : public Process {
+    public: int prerusen;
 	void Behavior(){
 		double start_time = Time;
 		int minimum;
 		int pozice;
+		prerusen = 0;
 		if(Random() < 0.1111){
 			Seize(Uzeniny);
 			Wait(Uniform(30, 80));
@@ -56,7 +58,9 @@ class Zakaznik : public Process {
                     goto pokladna;
                 }
             }
+        opak:
             Seize(Pokladna[pozice]);
+            if(prerusen) goto opak;
             Wait(10+Exponential(110));
             Release(Pokladna[pozice]);
 
@@ -83,6 +87,30 @@ class Generator : public Event {
 		Activate(Time+Exponential(prichod));
 	}
 };
+class Oprava : public Process {
+    void Behavior(){
+        int kde = (int)(Random()*5 + 0.5);
+        printf("%d\n",kde);
+        Seize(Pokladna[kde], 1);
+        if(Pokladna[kde].Q2->Length() > 0){
+            Zakaznik *zak = (Zakaznik*)Pokladna[kde].Q2->GetFirst();
+            zak->prerusen = 1;
+            Wait(120);
+            zak->prerusen = 0;
+            Release(Pokladna[kde]);
+        }
+        else{
+            Wait(120);
+            Release(Pokladna[kde]);
+        }
+    }
+};
+class Chyba : public Event{
+    void Behavior(){
+        (new Oprava)->Activate();
+        Activate(Time+13*60);
+    }
+};
 
 int main(int argc, char *argv[]){
     otevrene.push_back(0);
@@ -106,6 +134,7 @@ int main(int argc, char *argv[]){
 
 	Init(0,1000000);
 	(new Generator)->Activate();
+	(new Chyba)->Activate();
 	Run();
 
 	Uzeniny.Output();
