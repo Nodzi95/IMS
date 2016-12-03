@@ -90,7 +90,6 @@ class Generator : public Event {
 class Oprava : public Process {
     void Behavior(){
         int kde = (int)(Random()*5 + 0.5);
-        printf("%d\n",kde);
         Seize(Pokladna[kde], 1);
         if(Pokladna[kde].Q2->Length() > 0){
             Zakaznik *zak = (Zakaznik*)Pokladna[kde].Q2->GetFirst();
