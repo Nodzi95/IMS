@@ -1,7 +1,7 @@
 # IMS
 simulační systém do IMS
 
-X - nepovinne, defaultne 27
+X - nepovinne, defaultne 27 (parametr pro exponencialní rozložení generování zákazníků)
 
 Spuštění:
           make
