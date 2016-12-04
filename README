@@ -2,7 +2,8 @@ IMS
 simulační systém do IMS
 
 X - nepovinné, defaultně 27 (parametr pro exponencialní rozložení generování zákazníků)
-
+Y - nepovinné, defaultně 8 (parametr pro délku fronty, při které se otevře nová pokladna)
+file - nepovinné, defaultně output.out (nastaví výstupní soubor)
 Spuštění:
           make
-          ./sim X
+          ./sim X Y file
