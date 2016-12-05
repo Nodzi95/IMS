@@ -5,7 +5,7 @@
 #include <string>
 #define POCET_POKLADEN 6
 
-#define DEBUG 0
+#define DEBUG 1
 
 using namespace std;
 
@@ -50,6 +50,10 @@ Histogram pokV4("Navstevnost pokladny4", 0, dvacetina, 20);
 Histogram pokV5("Navstevnost pokladny5", 0, dvacetina, 20);
 Histogram pokV6("Navstevnost pokladny6", 0, dvacetina, 20);
 
+int otevreno = 0;
+int zavreno = 0;
+int chyba = 0;
+int uzeniny = 0;
 
 class Zakaznik : public Process {
     public: int prerusen;
@@ -63,6 +67,9 @@ class Zakaznik : public Process {
 			Seize(Uzeniny);
 			Wait(Uniform(30, 80));
 			Release(Uzeniny);
+#if DEBUG
+			uzeniny++;
+#endif
 			if(Random() <20){   //20% jde z uzenin rovnou k pokladne
                 //rovnou k pokladne
 				goto pokladna;
@@ -86,7 +93,7 @@ class Zakaznik : public Process {
                     otevrene.push_back(zavrene.front());
                     zavrene.pop_front();
 #if DEBUG
-                    printf("oteviram: %d\n", otevrene.back());
+                    otevreno++;
                     if(otevrene.back() == 0) pokO1(Time);
                     else if(otevrene.back() == 1) pokO2(Time);
                     else if(otevrene.back() == 2) pokO3(Time);
@@ -106,7 +113,9 @@ class Zakaznik : public Process {
             else if(pozice == 5) pokV6(Time);
             //zaber pokladnu
             Seize(Pokladna[pozice]);
-            if(prerusen) goto opak;
+            if(prerusen){
+		 goto opak;
+	    }
             //obsluha na pokladne
             Wait(10+Exponential(110));
             //vraceni prodavacky
@@ -115,7 +124,7 @@ class Zakaznik : public Process {
             for(list<int>::iterator iter = otevrene.begin(); iter != otevrene.end();){
                 if(Pokladna[(*iter)].QueueLen() == 0 && otevrene.size() > 1){
 #if DEBUG
-                    printf("uzaviram: %d\n",(*iter));
+                    zavreno++;
                     if(otevrene.back() == 0) pokZ1(Time);
                     else if(otevrene.back() == 1) pokZ2(Time);
                     else if(otevrene.back() == 2) pokZ3(Time);
@@ -144,6 +153,9 @@ class Generator : public Event {
 };
 class Oprava : public Process {
     void Behavior(){
+#if DEBUG
+	chyba++;
+#endif
         int kde = (int)(Random()*5 + 0.5);
         Seize(Pokladna[kde], 1);
         if(Pokladna[kde].Q2->Length() > 0){
@@ -201,7 +213,6 @@ int main(int argc, char *argv[]){
 	(new Chyba)->Activate();
 
 	Run();
-
     //vypisy statistik front
 	Uzeniny.Output();
     for(int i = 0; i < POCET_POKLADEN; i++){
@@ -211,6 +222,12 @@ int main(int argc, char *argv[]){
     //celkovy cas v systemu
 	celk_cas.Output();
 #if DEBUG
+	Print("\nDebug\n");
+	Print("Pocet otevreni pokladen: %d\n", otevreno);
+	Print("Pocet uzavreni pokladen: %d\n", zavreno);
+	Print("Pocet pristupu k uzeninam: %d\n", uzeniny);
+	Print("Pocet chyb u pokladen: %d\n", chyba);
+	SIMLIB_statistics.Output();
     //otevirani pokladen
 	pokO1.Output();
 	pokO2.Output();
