@@ -3,6 +3,7 @@
 #include "simlib.h"
 #include <cstdlib>
 #include <string>
+#include <ctime>
 #define POCET_POKLADEN 6
 
 #define DEBUG 1
@@ -17,14 +18,13 @@ list<int> zavrene;
 Facility Uzeniny("Uzeniny");
 Facility Pokladna[POCET_POKLADEN];
 
-int prichod = 27;
-int hodin = 4;
-int sekund = hodin * 60 * 60;
-int dvacetina = sekund/20;
-int delka = 8;
+int prichod = 14;
+int sekund = 10000000;
+int dvacetina = 10000000/20;
+int delka = 6;
 
 //histogram celkoveho casu v systemu
-Histogram celk_cas("Celkova doba v system", 0, 180, 20);
+Histogram celk_cas("Celkova doba v system", 0, 6000/20, 20);
 
 //histogrami otevirani pokladen
 Histogram pokO1("Otevreni pokladny1", 0, dvacetina, 20);
@@ -42,18 +42,15 @@ Histogram pokZ4("Zavreni pokladny4", 0, dvacetina, 20);
 Histogram pokZ5("Zavreni pokladny5", 0, dvacetina, 20);
 Histogram pokZ6("Zavreni pokladny6", 0, dvacetina, 20);
 
-//histogrami navstevnosti pokladen
-Histogram pokV1("Navstevnost pokladny1", 0, dvacetina, 20);
-Histogram pokV2("Navstevnost pokladny2", 0, dvacetina, 20);
-Histogram pokV3("Navstevnost pokladny3", 0, dvacetina, 20);
-Histogram pokV4("Navstevnost pokladny4", 0, dvacetina, 20);
-Histogram pokV5("Navstevnost pokladny5", 0, dvacetina, 20);
-Histogram pokV6("Navstevnost pokladny6", 0, dvacetina, 20);
+//histogrami doby na pokladne
+Histogram cas_na_pokladne("Doba na pokladne", 0, 100, 20);
+
 
 int otevreno = 0;
 int zavreno = 0;
 int chyba = 0;
 int uzeniny = 0;
+int clovek = 0;
 
 class Zakaznik : public Process {
     public: int prerusen;
@@ -61,6 +58,7 @@ class Zakaznik : public Process {
 		double start_time = Time;
 		int pozice;
 		int minimum;
+		double pokl_time;
 		prerusen = 0;
 
 		if(Random() < 0.1111){  //11.11% jde k uzeninam
@@ -105,21 +103,17 @@ class Zakaznik : public Process {
                 }
             }
         opak:
-            if(pozice == 0) pokV1(Time);
-            else if(pozice == 1) pokV2(Time);
-            else if(pozice == 2) pokV3(Time);
-            else if(pozice == 3) pokV4(Time);
-            else if(pozice == 4) pokV5(Time);
-            else if(pozice == 5) pokV6(Time);
             //zaber pokladnu
+		pokl_time = Time;
             Seize(Pokladna[pozice]);
             if(prerusen){
 		 goto opak;
 	    }
             //obsluha na pokladne
-            Wait(10+Exponential(110));
+            Wait(Uniform(5,15)+Exponential(55));
             //vraceni prodavacky
             Release(Pokladna[pozice]);
+		cas_na_pokladne(Time - pokl_time);
             //projde otevrene pokladny a zavrou se ty, ktere maji frontu o delce 0
             for(list<int>::iterator iter = otevrene.begin(); iter != otevrene.end();){
                 if(Pokladna[(*iter)].QueueLen() == 0 && otevrene.size() > 1){
@@ -147,6 +141,7 @@ class Zakaznik : public Process {
 
 class Generator : public Event {
 	void Behavior(){
+		clovek++;
 		(new Zakaznik)->Activate();
 		Activate(Time+Exponential(prichod));
 	}
@@ -176,11 +171,13 @@ class Oprava : public Process {
 class Chyba : public Event{
     void Behavior(){
         (new Oprava)->Activate();
-        Activate(Time+13*60);
+        Activate(Time+Uniform(7,14)*60);
     }
 };
 
 int main(int argc, char *argv[]){
+	RandomSeed(time(0));
+	
     otevrene.push_back(0);
     zavrene.push_back(1);
     zavrene.push_back(2);
@@ -227,9 +224,10 @@ int main(int argc, char *argv[]){
 	Print("Pocet uzavreni pokladen: %d\n", zavreno);
 	Print("Pocet pristupu k uzeninam: %d\n", uzeniny);
 	Print("Pocet chyb u pokladen: %d\n", chyba);
+	Print("Prumerny prichod: %g\n", 10000000.0/clovek);
 	SIMLIB_statistics.Output();
     //otevirani pokladen
-	pokO1.Output();
+	/*pokO1.Output();
 	pokO2.Output();
 	pokO3.Output();
 	pokO4.Output();
@@ -241,15 +239,10 @@ int main(int argc, char *argv[]){
 	pokZ3.Output();
 	pokZ4.Output();
 	pokZ5.Output();
-	pokZ6.Output();
+	pokZ6.Output();*/
 #endif // DEBUG
-    //navstevnost pokladen
-	pokV1.Output();
-	pokV2.Output();
-	pokV3.Output();
-	pokV4.Output();
-	pokV5.Output();
-	pokV6.Output();
+	cas_na_pokladne.Output();
+
 #if DEBUG
 	printf("Vysledky odpovidaji generovani zakazniku s exponencialnim rozlezeni: %d\n", prichod);
 #endif // DEBUG
